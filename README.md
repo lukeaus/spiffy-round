@@ -1,7 +1,7 @@
 # <img src="media/logo.png" title="Spiffy Round" alt="Spiffy Round logo" width="530">
 
 [![Tests](https://img.shields.io/travis/lukeaus/spiffy-round/master.svg)](https://travis-ci.org/lukeaus/spiffy-round)
-[![MIT License](https://img.shields.io/npm/l/spiffy-round.svg)](https://github.com/lukeaus/spiffy-round/blob/master/LICENSE)
+[![MIT License](https://img.shields.io/github/license/lukeaus/spiffy-round.svg)](https://img.shields.io/github/license/lukeaus/spiffy-round.svg)
 [![version](https://img.shields.io/npm/v/spiffy-round.svg)](http://npm.im/spiffy-round)
 [![downloads](https://img.shields.io/npm/dm/spiffy-round.svg)](http://npm-stat.com/charts.html?package=spiffy-round&from=2018-07-24)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
