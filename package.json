@@ -1,0 +1,67 @@
+{
+  "name": "spiffy-round",
+  "description": "A spiffy rounder for numbers",
+  "author": {
+    "name": "Luke Scott",
+    "email": "luke.m.scott@gmail.com",
+    "url": "https://lukescott.co"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lukeaus/spiffy-round/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukeaus/spiffy-round.git"
+  },
+  "homepage": "https://github.com/lukeaus/spiffy-round#readme",
+  "scripts": {
+    "test": "mocha src",
+    "build": "microbundle",
+    "dev": "microbundle watch",
+    "lint": "eslint src/",
+    "prebuild": "rimraf dist",
+    "commit": "git-cz",
+    "semantic-release": "semantic-release"
+  },
+  "source": "src/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "unpkg": "dist/index.umd.js",
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged"
+    }
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-conventional-changelog"
+    }
+  },
+  "devDependencies": {
+    "chai": "4.2.0",
+    "commitizen": "3.1.1",
+    "cz-conventional-changelog": "2.1.0",
+    "eslint": "5.16.0",
+    "eslint-config-prettier": "4.3.0",
+    "eslint-plugin-import": "2.17.3",
+    "eslint-plugin-node": "9.1.0",
+    "eslint-plugin-prettier": "3.1.0",
+    "eslint-plugin-promise": "4.1.1",
+    "husky": "2.3.0",
+    "microbundle": "0.11.0",
+    "mocha": "6.1.4",
+    "prettier": "1.17.1",
+    "pretty-quick": "1.11.0",
+    "rimraf": "2.6.3",
+    "travis-deploy-once": "5.0.11"
+  },
+  "keywords": [
+    "round",
+    "rounder",
+    "rounding",
+    "number",
+    "string",
+    "decimal places"
+  ]
+}
