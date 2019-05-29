@@ -22,7 +22,8 @@
     "lint": "eslint src/",
     "prebuild": "rimraf dist",
     "commit": "git-cz",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "travis-deploy-once": "travis-deploy-once"
   },
   "source": "src/index.js",
   "main": "dist/index.js",
