@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+# Serialize master publications: one release at a time, never cancel an
+# in-progress release. Duplicate PR runs may be cancelled to save resources.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+# Least-privilege default; only the master release job elevates permissions.
+permissions:
+  contents: read
+
+jobs:
+  # Node 20: supported package compatibility floor. Read-only, never publishes.
+  validate-node20:
+    name: Validate (Node 20)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run validate:package
+      - run: npm audit --audit-level=low
+
+  # Node 24: current tooling gate. Read-only, never publishes.
+  validate-node24:
+    name: Validate (Node 24)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run validate:package
+      - run: npm audit --audit-level=low
+
+  # Master-only release. Elevated permissions are never active on PR runs, so
+  # PR-controlled code cannot request an OIDC token or publish. registry-url is
+  # intentionally omitted: setup-node's .npmrc conflicts with semantic-release's
+  # OIDC trusted-publishing auth (EINVALIDNPMTOKEN).
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [validate-node20, validate-node24]
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run build
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
