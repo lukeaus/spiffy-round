@@ -1,6 +1,6 @@
 # <img src="media/logo.png" title="Spiffy Round" alt="Spiffy Round logo" width="530">
 
-[![Tests](https://img.shields.io/travis/lukeaus/spiffy-round/master.svg)](https://travis-ci.org/lukeaus/spiffy-round)
+[![CI](https://github.com/lukeaus/spiffy-round/actions/workflows/release.yml/badge.svg)](https://github.com/lukeaus/spiffy-round/actions/workflows/release.yml)
 [![MIT License](https://img.shields.io/github/license/lukeaus/spiffy-round.svg)](https://img.shields.io/github/license/lukeaus/spiffy-round.svg)
 [![version](https://img.shields.io/npm/v/spiffy-round.svg)](http://npm.im/spiffy-round)
 [![downloads](https://img.shields.io/npm/dm/spiffy-round.svg)](http://npm-stat.com/charts.html?package=spiffy-round&from=2018-07-24)
@@ -81,5 +81,7 @@ Contributions are welcomed. How to make a contribution:
 
 - Create an issue on Github
 - Fork project
-- Make changes then use `npm run commit` to commit
+- Make changes and commit using [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `fix: ...` or `feat: ...`)
 - Create a pull request
+
+Releases are published automatically from `master` on merge using [semantic-release](https://github.com/semantic-release/semantic-release) via GitHub Actions and npm trusted publishing.

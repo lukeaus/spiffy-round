@@ -15,48 +15,45 @@
     "url": "git+https://github.com/lukeaus/spiffy-round.git"
   },
   "homepage": "https://github.com/lukeaus/spiffy-round#readme",
-  "scripts": {
-    "test": "mocha src",
-    "build": "microbundle",
-    "dev": "microbundle watch",
-    "lint": "eslint src/",
-    "prebuild": "rimraf dist",
-    "commit": "git-cz",
-    "semantic-release": "semantic-release",
-    "travis-deploy-once": "travis-deploy-once"
+  "version": "0.0.0-development",
+  "engines": {
+    "node": ">=20"
   },
-  "source": "src/index.js",
+  "scripts": {
+    "clean": "node -e \"const f=require('node:fs');for(const d of['.build','dist'])f.rmSync(d,{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json && rollup -c rollup.config.mjs",
+    "test": "tsx --test src/index.test.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate:package": "tsx --test scripts/validate-package.ts",
+    "semantic-release": "semantic-release"
+  },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "unpkg": "dist/index.umd.js",
-  "husky": {
-    "hooks": {
-      "pre-commit": "pretty-quick --staged"
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
     }
   },
-  "config": {
-    "commitizen": {
-      "path": "node_modules/cz-conventional-changelog"
-    }
-  },
+  "files": [
+    "dist/index.js",
+    "dist/index.mjs",
+    "dist/index.umd.js",
+    "dist/index.d.ts",
+    "media/logo.png"
+  ],
   "devDependencies": {
-    "chai": "4.2.0",
-    "commitizen": "3.1.1",
-    "cz-conventional-changelog": "2.1.0",
-    "eslint": "5.16.0",
-    "eslint-config-prettier": "4.3.0",
-    "eslint-plugin-import": "2.17.3",
-    "eslint-plugin-node": "9.1.0",
-    "eslint-plugin-prettier": "3.1.0",
-    "eslint-plugin-promise": "4.1.1",
-    "husky": "2.3.0",
-    "microbundle": "0.11.0",
-    "mocha": "6.1.4",
-    "prettier": "1.17.1",
-    "pretty-quick": "1.11.0",
-    "rimraf": "2.6.3",
-    "semantic-release": "15.13.12",
-    "travis-deploy-once": "5.0.11"
+    "@types/node": "20.19.43",
+    "prettier": "3.9.6",
+    "rollup": "4.62.2",
+    "semantic-release": "25.0.8",
+    "tsx": "4.23.1",
+    "typescript": "7.0.2"
   },
   "keywords": [
     "round",
