@@ -52,9 +52,9 @@ const fillUnfilledDecimalPlaces = (
 
 /*
  * Round to `places` decimals using an explicit rule. Mirrors round-to's
- * toPrecision(15) correction so float-repr noise (e.g. 1.2*100 -> 120.000...1)
- * does not corrupt directional rules. The default rule is NOT routed here; it
- * keeps Number.toFixed to preserve spiffy-round's locked behavior (1.005 -> "1").
+ * toPrecision(15) correction so float-repr noise (e.g. 1.005 stored as
+ * 1.00499..., 1.2*100 -> 120.000...1) does not corrupt rounding. All rules,
+ * including the default toNearestOrAwayFromZero, route through here.
  */
 const roundWithRule = (
   val: string,
@@ -117,12 +117,9 @@ const spiffyRound = Object.assign(
       val = val.slice(0, -1);
     }
     if (val.includes(".")) {
-      // ponytail: default rule keeps Number.toFixed (locked behavior, 1.005 -> "1");
-      // non-default rules round explicitly via roundWithRule, then share fill/strip.
-      val =
-        rule === DEFAULT_RULE
-          ? String(Number(val).toFixed(places))
-          : roundWithRule(val, places, rule);
+      // All rules (default included) round via roundWithRule, which applies
+      // the toPrecision(15) float-repr correction (fixes 1.005 -> "1.01").
+      val = roundWithRule(val, places, rule);
       val = fillUnfilledDecimalPlaces(val, places);
       val = stripUnrequiredTrailingZeros(val);
     }

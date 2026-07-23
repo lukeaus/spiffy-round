@@ -49,14 +49,14 @@ describe("VAL-BEHAVIOR-003: fractions round and pad consistently", () => {
   });
 });
 
-describe("VAL-BEHAVIOR-004: native rounding edge behavior is unchanged", () => {
-  it("rounds 1.005 family to integer text at precision 2", () => {
-    assert.equal(spiffyRound(1.005, 2), "1");
-    assert.equal(spiffyRound(+1.005, 2), "1");
-    assert.equal(spiffyRound(-1.005, 2), "-1");
-    assert.equal(spiffyRound("1.005", 2), "1");
-    assert.equal(spiffyRound("+1.005", 2), "1");
-    assert.equal(spiffyRound("-1.005", 2), "-1");
+describe("VAL-BEHAVIOR-004: half-step decimals round with float-repr correction", () => {
+  it("rounds 1.005 family up at precision 2 (corrected, not toFixed)", () => {
+    assert.equal(spiffyRound(1.005, 2), "1.01");
+    assert.equal(spiffyRound(+1.005, 2), "1.01");
+    assert.equal(spiffyRound(-1.005, 2), "-1.01");
+    assert.equal(spiffyRound("1.005", 2), "1.01");
+    assert.equal(spiffyRound("+1.005", 2), "1.01");
+    assert.equal(spiffyRound("-1.005", 2), "-1.01");
   });
   it("rounds 1.006 family up at precision 2", () => {
     assert.equal(spiffyRound(1.006, 2), "1.01");
@@ -191,9 +191,9 @@ describe("VAL-BEHAVIOR-013: explicit roundingRule option", () => {
   const even = { roundingRule: "toNearestOrEven" as const };
   const away = { roundingRule: "toNearestOrAwayFromZero" as const };
 
-  it("explicit default rule matches the no-options toFixed path", () => {
-    // 1.005 -> "1" (toFixed float-repr), not round-to's 1.01
-    assert.equal(spiffyRound(1.005, 2, away), "1");
+  it("explicit default rule matches the no-options path", () => {
+    // 1.005 -> "1.01" via toPrecision(15) float-repr correction
+    assert.equal(spiffyRound(1.005, 2, away), "1.01");
     assert.equal(spiffyRound(1.256, 2, away), "1.26");
   });
 
