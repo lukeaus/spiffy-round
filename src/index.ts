@@ -1,3 +1,17 @@
+export type RoundingRule =
+  | "toNearestOrAwayFromZero"
+  | "toNearestOrEven"
+  | "up"
+  | "down"
+  | "towardZero"
+  | "awayFromZero";
+
+export interface RoundingOptions {
+  roundingRule?: RoundingRule;
+}
+
+const DEFAULT_RULE: RoundingRule = "toNearestOrAwayFromZero";
+
 const isZeroIsh = (val: string): boolean =>
   /^[+-]?[.]?[0,]*[.]?[0]*$/.test(val);
 
@@ -37,11 +51,64 @@ const fillUnfilledDecimalPlaces = (
 };
 
 /*
+ * Round to `places` decimals using an explicit rule. Mirrors round-to's
+ * toPrecision(15) correction so float-repr noise (e.g. 1.2*100 -> 120.000...1)
+ * does not corrupt directional rules. The default rule is NOT routed here; it
+ * keeps Number.toFixed to preserve spiffy-round's locked behavior (1.005 -> "1").
+ */
+const roundWithRule = (
+  val: string,
+  places: number,
+  rule: RoundingRule,
+): string => {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return String(n);
+  const p = Math.trunc(places);
+  const power = 10 ** p;
+  const scaled = Number.parseFloat((n * power).toPrecision(15));
+  let rounded: number;
+  switch (rule) {
+    case "up":
+      rounded = Math.ceil(scaled);
+      break;
+    case "down":
+      rounded = Math.floor(scaled);
+      break;
+    case "towardZero":
+      rounded = Math.trunc(scaled);
+      break;
+    case "awayFromZero":
+      rounded = scaled >= 0 ? Math.ceil(scaled) : Math.floor(scaled);
+      break;
+    case "toNearestOrEven": {
+      const frac = Math.abs(scaled - Math.trunc(scaled));
+      const epsilon = Number.EPSILON * Math.abs(scaled) * 8;
+      if (Math.abs(frac - 0.5) <= Math.max(epsilon, 1e-10)) {
+        const floor = Math.floor(scaled);
+        rounded = floor % 2 === 0 ? floor : Math.ceil(scaled);
+      } else {
+        rounded = Math.round(scaled);
+      }
+      break;
+    }
+    default:
+      rounded = scaled < 0 ? -Math.round(Math.abs(scaled)) : Math.round(scaled);
+      break;
+  }
+  return (rounded / power).toFixed(p);
+};
+
+/*
  * Return a string that has been rounded to decimalPlaces where that rounding should occur
  */
 const spiffyRound = Object.assign(
-  (value: number | string = "", decimalPlaces: number = 0): string => {
+  (
+    value: number | string = "",
+    decimalPlaces: number = 0,
+    options?: RoundingOptions,
+  ): string => {
     const places = Math.abs(decimalPlaces);
+    const rule = options?.roundingRule ?? DEFAULT_RULE;
     let val = String(value);
     if (val.startsWith(".")) {
       val = "0" + val;
@@ -50,7 +117,12 @@ const spiffyRound = Object.assign(
       val = val.slice(0, -1);
     }
     if (val.includes(".")) {
-      val = String(Number(val).toFixed(places));
+      // ponytail: default rule keeps Number.toFixed (locked behavior, 1.005 -> "1");
+      // non-default rules round explicitly via roundWithRule, then share fill/strip.
+      val =
+        rule === DEFAULT_RULE
+          ? String(Number(val).toFixed(places))
+          : roundWithRule(val, places, rule);
       val = fillUnfilledDecimalPlaces(val, places);
       val = stripUnrequiredTrailingZeros(val);
     }

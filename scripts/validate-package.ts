@@ -27,14 +27,14 @@ const repoRoot = resolve(".");
 const distDir = join(repoRoot, "dist");
 const cleanups: (() => void)[] = [];
 
-type SpiffyFn = ((v?: unknown, p?: number) => string) & {
+type SpiffyFn = ((v?: unknown, p?: number, o?: unknown) => string) & {
   fillUnfilledDecimalPlaces: (v: unknown, p?: number) => string;
 };
 
 // Shared finite runtime matrix covering VAL-BEHAVIOR-001..011 (VAL-CROSS-001)
 const matrix: {
   name: string;
-  args: [unknown, number?];
+  args: [unknown, number?, unknown?];
   expected?: string;
   throws?: string;
 }[] = [
@@ -111,6 +111,47 @@ const matrix: {
   { name: "invalid decimal abc.def p2", args: ["abc.def", 2], expected: "NaN" },
   { name: "comma zero 0,0", args: ["0,0"], expected: "0" },
   { name: "comma only", args: [","], expected: "0" },
+  // 013: explicit roundingRule
+  {
+    name: "explicit default 1.005 p2",
+    args: [1.005, 2, { roundingRule: "toNearestOrAwayFromZero" }],
+    expected: "1",
+  },
+  {
+    name: "even 5.5 p0",
+    args: [5.5, 0, { roundingRule: "toNearestOrEven" }],
+    expected: "6",
+  },
+  {
+    name: "even -4.5 p0",
+    args: [-4.5, 0, { roundingRule: "toNearestOrEven" }],
+    expected: "-4",
+  },
+  {
+    name: "up 1.004 p2",
+    args: [1.004, 2, { roundingRule: "up" }],
+    expected: "1.01",
+  },
+  {
+    name: "up -0.375 p2",
+    args: [-0.375, 2, { roundingRule: "up" }],
+    expected: "-0.37",
+  },
+  {
+    name: "down 1.006 p2",
+    args: [1.006, 2, { roundingRule: "down" }],
+    expected: "1",
+  },
+  {
+    name: "towardZero -5.5 p0",
+    args: [-5.5, 0, { roundingRule: "towardZero" }],
+    expected: "-5",
+  },
+  {
+    name: "awayFromZero -5.2 p0",
+    args: [-5.2, 0, { roundingRule: "awayFromZero" }],
+    expected: "-6",
+  },
 ];
 
 const helperMatrix: {
@@ -596,6 +637,7 @@ const a: string = spiffyRound(1.256, 2);
 const b: string = spiffyRound("1.256", 2);
 const c: string = spiffyRound();
 const d: string = spiffyRound.fillUnfilledDecimalPlaces("1", 2);
+const e: string = spiffyRound(5.5, 0, { roundingRule: "toNearestOrEven" });
 // @ts-expect-error: object input is not in the documented static type
 spiffyRound({ value: 1 });
 `,
