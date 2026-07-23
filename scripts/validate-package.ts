@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import {
   existsSync,
   statSync,
+  lstatSync,
   readFileSync,
   mkdtempSync,
   rmSync,
@@ -390,6 +391,116 @@ async function main(): Promise<void> {
     ["spiffy-round"],
     "no runtime deps beyond spiffy-round",
   );
+
+  // Strengthened: installed version must equal the packed version, and the
+  // installed dependency metadata/tree must contain no file:, link:, workspace,
+  // or symlink references (local resolution would mean the package is not a
+  // self-contained registry artifact).
+  const packedVersion = packJson[0].version as string;
+  const installedPkgPath = join(
+    consumerDir,
+    "node_modules",
+    "spiffy-round",
+    "package.json",
+  );
+  const installedPkg = JSON.parse(readFileSync(installedPkgPath, "utf8"));
+  assert.equal(
+    installedPkg.version,
+    packedVersion,
+    "installed version === packed version",
+  );
+
+  // Installed package dependency metadata must not declare local resolution.
+  for (const field of [
+    "dependencies",
+    "optionalDependencies",
+    "peerDependencies",
+    "bundleDependencies",
+  ] as const) {
+    const deps = installedPkg[field] as Record<string, string> | undefined;
+    if (deps) {
+      for (const [name, spec] of Object.entries(deps)) {
+        assert.ok(
+          !/^(file:|link:|workspace:)/.test(spec),
+          `installed ${field}.${name} must not resolve via file:/link:/workspace: ${spec}`,
+        );
+      }
+    }
+  }
+
+  // The installed package itself must be a real directory, not a symlink.
+  const installedDir = join(consumerDir, "node_modules", "spiffy-round");
+  const spiffyStat = lstatSync(installedDir);
+  assert.ok(spiffyStat.isDirectory(), "spiffy-round is a real directory");
+  assert.ok(!spiffyStat.isSymbolicLink(), "spiffy-round is not a symlink");
+
+  // No symlinks anywhere inside the installed package directory.
+  const symlinks: string[] = [];
+  const walkStack = [installedDir];
+  while (walkStack.length) {
+    const dir = walkStack.pop()!;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isSymbolicLink()) {
+        symlinks.push(full);
+      } else if (entry.isDirectory()) {
+        walkStack.push(full);
+      }
+    }
+  }
+  assert.deepEqual(symlinks, [], "no symlinks inside installed spiffy-round");
+
+  // Full installed dependency tree must not resolve any transitive dependency
+  // via file:/link:/workspace. The top-level spiffy-round entry resolves from
+  // the local tarball by design and is excluded; only its transitive subtree
+  // (expected empty, since the package has no runtime deps) is checked.
+  const lsJson = JSON.parse(
+    exec("npm ls --all --no-fund --no-audit --json", { cwd: consumerDir }),
+  );
+  const badSpecs: string[] = [];
+  function walkDeps(
+    deps:
+      | Record<
+          string,
+          { resolved?: string; dependencies?: Record<string, unknown> }
+        >
+      | undefined,
+    prefix: string,
+    isTopLevel: boolean,
+  ): void {
+    if (!deps) return;
+    for (const [name, info] of Object.entries(deps)) {
+      const resolved = info.resolved ?? "";
+      if (!isTopLevel && /^(file:|link:|workspace:)/.test(resolved)) {
+        badSpecs.push(`${prefix}${name} -> ${resolved}`);
+      }
+      walkDeps(
+        info.dependencies as
+          | Record<
+              string,
+              { resolved?: string; dependencies?: Record<string, unknown> }
+            >
+          | undefined,
+        `${prefix}${name}/`,
+        false,
+      );
+    }
+  }
+  walkDeps(
+    lsJson.dependencies as
+      | Record<
+          string,
+          { resolved?: string; dependencies?: Record<string, unknown> }
+        >
+      | undefined,
+    "",
+    true,
+  );
+  assert.deepEqual(
+    badSpecs,
+    [],
+    "no file:/link:/workspace references in transitive dependency tree",
+  );
   console.log("  OK");
 
   // VAL-PACKAGE-004: installed CJS consumer
@@ -468,6 +579,19 @@ assert.equal(spiffyRound.fillUnfilledDecimalPlaces("1", 2), "1.00");
   writeFileSync(
     join(consumerDir, "consumer.ts"),
     `import spiffyRound from "spiffy-round";
+
+// VAL-PACKAGE-008 (strengthened): type-level proof that public return types
+// are not \`any\`. If a declaration widens a return type to \`any\`, IsAny<T>
+// resolves to true, NotAny<T> resolves to false, and Assert<false> fails
+// compilation because false does not extend true.
+type IsAny<T> = 0 extends 1 & T ? true : false;
+type NotAny<T> = IsAny<T> extends true ? false : true;
+type Assert<T extends true> = T;
+type _ReturnNotAny = Assert<NotAny<ReturnType<typeof spiffyRound>>>;
+type _HelperNotAny = Assert<
+  NotAny<ReturnType<typeof spiffyRound.fillUnfilledDecimalPlaces>>
+>;
+
 const a: string = spiffyRound(1.256, 2);
 const b: string = spiffyRound("1.256", 2);
 const c: string = spiffyRound();
