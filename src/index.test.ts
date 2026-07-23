@@ -182,3 +182,57 @@ describe("VAL-BEHAVIOR-012: runtime compatibility does not widen static types", 
     spiffyRound({ value: 1 });
   });
 });
+
+describe("VAL-BEHAVIOR-013: explicit roundingRule option", () => {
+  const up = { roundingRule: "up" as const };
+  const down = { roundingRule: "down" as const };
+  const towardZero = { roundingRule: "towardZero" as const };
+  const awayFromZero = { roundingRule: "awayFromZero" as const };
+  const even = { roundingRule: "toNearestOrEven" as const };
+  const away = { roundingRule: "toNearestOrAwayFromZero" as const };
+
+  it("explicit default rule matches the no-options toFixed path", () => {
+    // 1.005 -> "1" (toFixed float-repr), not round-to's 1.01
+    assert.equal(spiffyRound(1.005, 2, away), "1");
+    assert.equal(spiffyRound(1.256, 2, away), "1.26");
+  });
+
+  it("rounds toNearestOrEven (banker's) at ties", () => {
+    assert.equal(spiffyRound(5.5, 0, even), "6");
+    assert.equal(spiffyRound(4.5, 0, even), "4");
+    assert.equal(spiffyRound(-5.5, 0, even), "-6");
+    assert.equal(spiffyRound(-4.5, 0, even), "-4");
+  });
+
+  it("rounds up toward +Infinity", () => {
+    assert.equal(spiffyRound(5.2, 0, up), "6");
+    assert.equal(spiffyRound(5.5, 0, up), "6");
+    assert.equal(spiffyRound(-5.2, 0, up), "-5");
+    assert.equal(spiffyRound(-5.5, 0, up), "-5");
+    assert.equal(spiffyRound(1.004, 2, up), "1.01");
+    assert.equal(spiffyRound(-0.375, 2, up), "-0.37");
+  });
+
+  it("rounds down toward -Infinity", () => {
+    assert.equal(spiffyRound(5.2, 0, down), "5");
+    assert.equal(spiffyRound(5.5, 0, down), "5");
+    assert.equal(spiffyRound(-5.2, 0, down), "-6");
+    assert.equal(spiffyRound(-5.5, 0, down), "-6");
+    assert.equal(spiffyRound(1.006, 2, down), "1");
+    assert.equal(spiffyRound(-0.375, 2, down), "-0.38");
+  });
+
+  it("rounds towardZero (truncate)", () => {
+    assert.equal(spiffyRound(5.2, 0, towardZero), "5");
+    assert.equal(spiffyRound(5.5, 0, towardZero), "5");
+    assert.equal(spiffyRound(-5.2, 0, towardZero), "-5");
+    assert.equal(spiffyRound(-5.5, 0, towardZero), "-5");
+  });
+
+  it("rounds awayFromZero", () => {
+    assert.equal(spiffyRound(5.2, 0, awayFromZero), "6");
+    assert.equal(spiffyRound(5.5, 0, awayFromZero), "6");
+    assert.equal(spiffyRound(-5.2, 0, awayFromZero), "-6");
+    assert.equal(spiffyRound(-5.5, 0, awayFromZero), "-6");
+  });
+});
