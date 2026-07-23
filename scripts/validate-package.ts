@@ -57,13 +57,13 @@ const matrix: {
   { name: "number 1.256 p2", args: [1.256, 2], expected: "1.26" },
   { name: "number 0.1 p2", args: [0.1, 2], expected: "0.10" },
   { name: "string 1.100 p2", args: ["1.100", 2], expected: "1.10" },
-  // 004: native rounding edges
-  { name: "1.005 p2", args: [1.005, 2], expected: "1" },
-  { name: "+1.005 p2", args: [+1.005, 2], expected: "1" },
-  { name: "-1.005 p2", args: [-1.005, 2], expected: "-1" },
-  { name: "string 1.005 p2", args: ["1.005", 2], expected: "1" },
-  { name: "string +1.005 p2", args: ["+1.005", 2], expected: "1" },
-  { name: "string -1.005 p2", args: ["-1.005", 2], expected: "-1" },
+  // 004: native rounding edges (corrected via toPrecision(15))
+  { name: "1.005 p2", args: [1.005, 2], expected: "1.01" },
+  { name: "+1.005 p2", args: [+1.005, 2], expected: "1.01" },
+  { name: "-1.005 p2", args: [-1.005, 2], expected: "-1.01" },
+  { name: "string 1.005 p2", args: ["1.005", 2], expected: "1.01" },
+  { name: "string +1.005 p2", args: ["+1.005", 2], expected: "1.01" },
+  { name: "string -1.005 p2", args: ["-1.005", 2], expected: "-1.01" },
   { name: "1.006 p2", args: [1.006, 2], expected: "1.01" },
   { name: "+1.006 p2", args: [+1.006, 2], expected: "1.01" },
   { name: "-1.006 p2", args: [-1.006, 2], expected: "-1.01" },
@@ -115,7 +115,7 @@ const matrix: {
   {
     name: "explicit default 1.005 p2",
     args: [1.005, 2, { roundingRule: "toNearestOrAwayFromZero" }],
-    expected: "1",
+    expected: "1.01",
   },
   {
     name: "even 5.5 p0",
