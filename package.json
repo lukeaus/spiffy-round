@@ -22,7 +22,7 @@
   "scripts": {
     "clean": "node -e \"const f=require('node:fs');for(const d of['.build','dist'])f.rmSync(d,{recursive:true,force:true})\"",
     "build": "npm run clean && tsc -p tsconfig.build.json && rollup -c rollup.config.mjs",
-    "test": "tsx --test src/index.test.ts",
+    "test": "tsx --test src/index.test.ts && node scripts/audit-project-only.mjs --self-test",
     "typecheck": "tsc -p tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
