@@ -1,15 +1,107 @@
 // Gate `npm audit` on the project's own dependency tree.
 //
-// npm also reports vulnerabilities in its own bundled internals
-// (node_modules/npm/**) that no npm release has patched yet — checked npm
-// 11.19.0 and 12.0.2, Aug 2026: brace-expansion, ip-address, tar and undici
-// are all still flagged inside the bundle. npm audit itself says such
-// findings "cannot be fixed automatically". Findings rooted in npm's bundle
-// (plus the pure dependency-chain findings they propagate through, e.g.
-// npm -> @semantic-release/npm -> semantic-release) are ignored here.
-// Re-check `node_modules/npm` after npm ships a patched bundle and drop the
-// ignore logic if so.
+// npm audit reports three classes of findings no dependency change here can
+// clear. They are ignored:
+//
+// 1. npm's bundled internals (node_modules/npm/**). npm ships a frozen copy of
+//    brace-expansion, ip-address, tar, undici, ... that no npm release has
+//    patched — checked 11.19.0 and 12.0.2, Aug 2026 — and npm audit itself
+//    says such findings "cannot be fixed automatically". Re-check
+//    node_modules/npm after npm ships a patched bundle and drop this ignore.
+//
+// 2. Advisories with no patched release (UNFIXABLE_ADVISORIES below).
+//
+// 3. Chain findings: `via` lists only other package names, so the package is
+//    flagged only because a dependency is. The root carries the advisory and
+//    is gated on its own; this also collapses cycles such as
+//    semantic-release <-> @semantic-release/*.
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+
+// Re-check: once a patched release exists, delete the entry and let the gate
+// cover it again.
+const UNFIXABLE_ADVISORIES = new Set([
+  "GHSA-vfj7-8cjw-p6xm", // braces <=3.0.3 stack-exhaustion DoS; patched: none
+]);
+
+const isNpmBundleNode = (node) =>
+  node === "node_modules/npm" || node.startsWith("node_modules/npm/");
+
+const advisoryId = (cause) =>
+  typeof cause === "object" && cause.url
+    ? String(cause.url).split("/").pop()
+    : null;
+
+const isActionable = (v) => {
+  // Chain-only finding: no advisory of its own. The root is gated instead.
+  const advisories = (v.via ?? []).filter((cause) => typeof cause === "object");
+  if (advisories.length === 0) return false;
+  // Installed only inside npm's bundled tree.
+  if (v.nodes.every(isNpmBundleNode)) return false;
+  // No patched release exists for any of its advisories.
+  return advisories.some((a) => {
+    const id = advisoryId(a);
+    return id === null || !UNFIXABLE_ADVISORIES.has(id);
+  });
+};
+
+if (process.argv.includes("--self-test")) {
+  const vuln = (via, nodes) => ({ via, nodes, severity: "high" });
+  const advisory = (id) => ({
+    url: `https://github.com/advisories/${id}`,
+    range: "*",
+  });
+
+  assert.equal(
+    isActionable(
+      vuln([advisory("GHSA-vfj7-8cjw-p6xm")], ["node_modules/braces"]),
+    ),
+    false,
+    "unfixable advisory is ignored",
+  );
+  assert.equal(
+    isActionable(vuln([advisory("GHSA-fixable")], ["node_modules/foo"])),
+    true,
+    "fixable advisory is gated",
+  );
+  assert.equal(
+    isActionable(vuln(["braces"], ["node_modules/micromatch"])),
+    false,
+    "chain finding is ignored",
+  );
+  assert.equal(
+    isActionable(
+      vuln(
+        ["micromatch", "semantic-release"],
+        ["node_modules/@semantic-release/commit-analyzer"],
+      ),
+    ),
+    false,
+    "chain cycle is ignored",
+  );
+  assert.equal(
+    isActionable(
+      vuln(
+        [advisory("GHSA-fixable")],
+        ["node_modules/npm/node_modules/undici"],
+      ),
+    ),
+    false,
+    "npm-bundle-only finding is ignored",
+  );
+  assert.equal(
+    isActionable(
+      vuln(
+        [advisory("GHSA-vfj7-8cjw-p6xm"), advisory("GHSA-fixable")],
+        ["node_modules/braces"],
+      ),
+    ),
+    true,
+    "mixed unfixable and fixable advisory is gated",
+  );
+  console.log("audit-project-only self-test ok");
+  process.exit(0);
+}
 
 const report = JSON.parse(readFileSync(0, "utf8"));
 
@@ -20,39 +112,15 @@ if (report.error) {
   process.exit(1);
 }
 
-const vulns = report.vulnerabilities ?? {};
-const isNpmBundleNode = (node) =>
-  node === "node_modules/npm" || node.startsWith("node_modules/npm/");
-
-// Leaf findings directly inside npm's bundled tree.
-const ignored = new Set(
-  Object.entries(vulns)
-    .filter(([, v]) => v.nodes.some(isNpmBundleNode))
-    .map(([name]) => name),
+const remaining = Object.entries(report.vulnerabilities ?? {}).filter(([, v]) =>
+  isActionable(v),
 );
-
-// Chain findings whose every cause is an already-ignored package.
-let changed = true;
-while (changed) {
-  changed = false;
-  for (const [name, v] of Object.entries(vulns)) {
-    if (ignored.has(name)) continue;
-    const via = v.via ?? [];
-    if (
-      via.length > 0 &&
-      via.every((cause) => typeof cause === "string" && ignored.has(cause))
-    ) {
-      ignored.add(name);
-      changed = true;
-    }
-  }
-}
-
-const remaining = Object.entries(vulns).filter(([name]) => !ignored.has(name));
 if (remaining.length > 0) {
   for (const [name, v] of remaining) {
     console.error(`${name} (${v.severity}): ${v.nodes.join(" -> ")}`);
   }
   process.exit(1);
 }
-console.log("npm audit: no vulnerabilities in the project dependency tree");
+console.log(
+  "npm audit: no actionable vulnerabilities in the project dependency tree",
+);
